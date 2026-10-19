@@ -1,0 +1,11 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const output=path.resolve(process.argv[2]||path.join(root,'dist'));
+const [html,css,engine,app]=await Promise.all(['index.html','src/style.css','src/engine.js','src/app.js'].map(p=>readFile(path.join(root,p),'utf8')));
+const code=engine.replace(/^export /gm,'')+'\n'+app.replace(/^import .* from '\.\/engine\.js';\r?\n/,'');
+if(/^import |^export /m.test(code))throw new Error('Unbundled module statements remain');
+const portable=html.replace('<link rel="stylesheet" href="/src/style.css">',()=>'<style>'+css+'</style>').replace('<script type="module" src="/src/app.js"></script>',()=>'<script type="module">\n'+code.replace(/<\/script/gi,'<\\/script')+'\n</script>');
+await mkdir(output,{recursive:true});await writeFile(path.join(output,'Filter-Studio.html'),portable);
+console.log('Created '+path.join(output,'Filter-Studio.html'));
